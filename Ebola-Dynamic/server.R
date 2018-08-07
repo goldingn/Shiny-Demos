@@ -1,7 +1,6 @@
 library("shiny")
 library("ggplot2")
 library("scales")
-library("rmongodb"); load("mongodb-login.RData")
 
 # Simulation and Shiny Application of Flue Season Dynamics
 shinyServer(function(input, output) {
@@ -158,39 +157,6 @@ shinyServer(function(input, output) {
       scale_y_continuous(labels = comma, name="")
     print(p)
   })
-  
-  output$counter <- 
-    renderText({
 
-      db <- "econometricsbysimulation"
-      
-      mongo <- 
-        mongo.create(host     = host , 
-                     db       = db, 
-                     username = username, 
-                     password = password)
-      # Please note, as is this code will not work for you.
-      # I have saved my host, db, username, and password in
-      # RData file load("mongodb-login.RData") in the same
-      # directory as my shiny app.
-      
-      collection <- "ebola_hit"
-      
-      namespace <- paste(db, collection, sep=".") 
-      
-      # insert entry
-      b <- mongo.bson.from.list(list(platform="MongoHQ", 
-                app="counter", date=toString(Sys.Date())))
-      ok <- mongo.insert(mongo, namespace, b)
-      
-      # query database for hit count
-      buf <- mongo.bson.buffer.create()
-      mongo.bson.buffer.append(buf, "app", "counter")
-      query <- mongo.bson.from.buffer(buf)
-      
-      counter <- mongo.count(mongo, namespace, query)
-      
-      paste0("Hits: ", counter)
-    })
   
 })

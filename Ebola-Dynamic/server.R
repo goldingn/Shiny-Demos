@@ -1,14 +1,100 @@
-library("shiny")
-library("ggplot2")
-library("scales")
+library(shiny)
+library(ggplot2)
+library(scales)
+
+# options of building health care units
+hcu_choices <- c("none", "small", "medium", "large")
+
+# get the current build vector
+get_build_vec <- function (input) {
+  names <- paste0("build", 1:9)
+  current_build_list <- lapply(names, function(name) input[[name]] )
+  current_build_vec <- unlist(current_build_list)
+  current_build_vec
+}
+
+# get the vector of bed availability
+get_beds <- function (input) {
+  
+  # bed types & vector of number of new beds to fill in
+  hcu_type <- get_build_vec(input)
+  new_beds <- rep(0, 10)
+  
+  # loop through units, adding the beds *after they have been built*
+  for (i in seq_along(hcu_type)) {
+    
+    if (hcu_type[i] == "small" & i <= 9) {
+      new_beds[i + 1] <- 30
+    }
+    
+    if (hcu_type[i] == "medium" & i <= 8) {
+      new_beds[i + 2] <- 100
+    }
+    
+    if (hcu_type[i] == "large" & i <= 6) {
+      new_beds[i + 4] <- 400
+    }
+    
+  }
+  
+  # return cumulative number of beds
+  cumsum(new_beds)
+  
+}
+
+# make sure the build vector is correct
+assert_build_vec <- function (input, session) {
+  # proposed building plan, and a corrected version
+  current_build_vec <- get_build_vec(input)
+  new_build_vec <- correct_build_vec(current_build_vec)
+  # loop through mistakes, applying the corrections
+  mistakes <- current_build_vec != new_build_vec
+  for (i in which(mistakes)) {
+    name <- paste0("build", i)
+    label <- paste0("month ", i, ":")
+    updateSelectInput(session, name, label,
+                      choices = hcu_choices,
+                      selected = "none")
+  }
+  
+}
+
+# get the next {number} of integers, from {from}, up to a maximum of {max}
+get_next <- function (number = 1, from = 1, max = 10) {
+  vec <- from + seq_len(number)
+  vec <- vec[vec <= max]
+  vec
+}
+
+# step through the build vector, deleting later builds if they conflict
+correct_build_vec <- function (build_vec) {
+  
+  for (i in seq_along(build_vec)) {
+
+    idx <- switch(build_vec[i],
+           medium = get_next(1, i),
+           large = get_next(3, i),
+           c())
+    
+    build_vec[idx] <- "none"
+    
+  }
+  
+  build_vec
+  
+}
+
 
 # Simulation and Shiny Application of Flue Season Dynamics
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
     
+  # make sure the building suggestion is valid
+  observe({assert_build_vec(input, session)})
+  
   mydata <- reactive({
     # Model Parameters:
     
-    IC <- 10 ^ 3   # Infected
+    IC <- 10 ^ 2   # Infected
     N  <- 10 ^ 7   # Total Population
     np <- 300  # Time periods
     
@@ -30,10 +116,13 @@ shinyServer(function(input, output) {
     M   <- 0.6
     DET <- 0.07
     K  <- 0.0003
-                    
-    # Gain in bumber of beds available
-    bedsv <- input$bed0
-    for (i in 1:9) bedsv[i+1] <- input[[paste0('bed',i)]]+bedsv[i]
+    
+    # get number of beds available
+    bedsv <- get_beds(input)
+
+    # # Gain in bumber of beds available
+    # bedsv <- rep(0, 10)
+    # for (i in 1:9) bedsv[i+1] <- input[[paste0('bed',i)]]+bedsv[i]
     
     # Model - Dynamic Change
     # Change in Susceptible
@@ -64,7 +153,7 @@ shinyServer(function(input, output) {
     Q[1]  <- 0    # Quarentined
     R[1]  <- 0    # Recovered
     D[1]  <- 0    # Deceased
-    B[1]  <- input$bed0
+    B[1]  <- 0
     r0[1] <- P*Days
     
     # Loop through periods
@@ -92,24 +181,21 @@ shinyServer(function(input, output) {
     
     # Turn the results into a table
     long <- data.frame(
-      Period=rep((0:np),4), 
-      Population = c(B, Q, C, D), 
+      Period=rep((0:np), 3), 
+      Population = c(B, C, D), 
       Indicator=rep(c("Beds",
-                      "Quarantined",
                       "Contageous", 
                       "Dead"), 
                     each=np+1))
-    wide <- cbind(B, r0, Q, C, D)
+    wide <- cbind(r0, B, C, D)
     
     # make some things integers
     wide <- as.data.frame(wide)
-    wide$Q <- as.integer(wide$Q)
     wide$B <- as.integer(wide$B)
     
     # better names
-    colnames(wide) <- c("Beds",
-                        "R0",
-                        "Quarantined",
+    colnames(wide) <- c("R0",
+                        "Beds",
                         "Contageous",
                         "Dead")
     
@@ -126,8 +212,9 @@ shinyServer(function(input, output) {
   output$datatable <- 
     renderTable({
       Tdata <- mydata()[["wide"]]
-      Tdata <- cbind(day=1:nrow(Tdata), Tdata)
-      Tdata[seq(1, nrow(Tdata), length.out = 11),]
+      Tdata <- Tdata[seq(1, nrow(Tdata), by = 30), ]
+      Tdata <- Tdata[-1, ]
+      Tdata <- cbind(month = 1:nrow(Tdata), Tdata)
     })
     
   output$graph1 <- renderPlot({
@@ -141,31 +228,5 @@ shinyServer(function(input, output) {
       scale_y_continuous(labels = comma, name="")
     print(p)
   })
-  
-  output$graph2 <- renderPlot({
-    
-    data2 <- mydata()[["wide"]]
-    data2 <- as.matrix(data2)
-    change <- data2[-1,]-data2[-nrow(data2),]
-    
-    long <- data.frame(
-      Period=rep((1:nrow(change)), 5), 
-      Population = c(change), 
-      Indicator=rep(c("Beds",
-                      "R0",
-                      "Quarantined",
-                      "Contageous", 
-                      "Dead"),
-                    each=nrow(change)))
-    
-    p <- ggplot(long[long$Indicator %in% input$Indicators,], 
-                aes(x=Period, y=Population, group=Indicator))    
-    p <- p + geom_line(aes(colour = Indicator), size=1,alpha=.75) + 
-      ggtitle("Change in Population")+
-      scale_x_continuous(name="Days")+
-      scale_y_continuous(labels = comma, name="")
-    print(p)
-  })
-
   
 })

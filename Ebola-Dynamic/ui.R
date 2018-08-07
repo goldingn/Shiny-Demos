@@ -1,45 +1,39 @@
 library(shiny)
+library(shinyjs)
+
+hcu_choices <- c("none", "small", "medium", "large")
 
 # Define UI for slider demo application
 shinyUI(pageWithSidebar(
   
   #  Application title
-  headerPanel("Ebola Model"),
+  headerPanel("Stop Ebola"),
   
   # Sidebar with sliders that demonstrate various available options
   sidebarPanel(
     
-    tags$h3("Data Generation"),
-      
-    sliderInput("bed0", "# of Quarantine Beds Available Initially:", 
-                min=0, max=10^3, value=0, step=10), 
-
-    sliderInput("bed1", "# of New Quarantine Beds Available at 1 months:", 
-                min=0, max=10^3, value=10, step=10), 
-
-    sliderInput("bed2", "# of New Quarantine Beds Available at 2 months:", 
-                min=0, max=10^3, value=50, step=10), 
+    tags$h3("Building strategy"),
     
-    sliderInput("bed3", "# of New Quarantine Beds Available at 3 months:", 
-                min=0, max=10^3, value=50, step=10), 
-
-    sliderInput("bed4", "# of New Quarantine Beds Available at 4 months:", 
-                min=0, max=10^3, value=50, step=10), 
-
-    sliderInput("bed5", "# of New Quarantine Beds Available at 5 months:", 
-                min=0, max=10^3, value=50, step=10), 
+    span("You are aiming to minimise the cumulative death toll after 10 months."),
+    span("You can build:"),
+    br(),
+    span("• small HCU: 30 beds, 1 month"),
+    br(),
+    span("• medium HCU: 100 beds, 2 months"),
+    br(),
+    span("• large HCU: 400 beds, 4 months"),
+    br(),
+    br(),
     
-    sliderInput("bed6", "# of New Quarantine Beds Available at 6 months:", 
-                min=0, max=10^3, value=50, step=10), 
-    
-    sliderInput("bed7", "# of New Quarantine Beds Available at 7 months:", 
-                min=0, max=10^3, value=50, step=10), 
-    
-    sliderInput("bed8", "# of New Quarantine Beds Available at 8 months:", 
-                min=0, max=10^3, value=100, step=10), 
-    
-    sliderInput("bed9", "# of New Quarantine Beds Available at 9 months:", 
-                min=0, max=10^3, value=100, step=10), 
+    selectInput("build1", "month 1:", choices = hcu_choices), 
+    selectInput("build2", "month 2:", choices = hcu_choices), 
+    selectInput("build3", "month 3:", choices = hcu_choices), 
+    selectInput("build4", "month 4:", choices = hcu_choices), 
+    selectInput("build5", "month 5:", choices = hcu_choices), 
+    selectInput("build6", "month 6:", choices = hcu_choices), 
+    selectInput("build7", "month 7:", choices = hcu_choices), 
+    selectInput("build8", "month 8:", choices = hcu_choices), 
+    selectInput("build9", "month 9:", choices = hcu_choices), 
     
     br(),
 
@@ -60,26 +54,32 @@ shinyUI(pageWithSidebar(
   # Show a table summarizing the values entered
   mainPanel(
     
-    # h5(textOutput("counter")),
+    tags$h3("Results"),
     
-    tableOutput("datatable"),
+    fluidRow(
+      column(12, align = "center",
+             tableOutput('datatable')
+      )
+    ),
+    # tableOutput("datatable"),
 
     fluidRow(
-      splitLayout(cellWidths = c("50%", "50%"),
-                  plotOutput("graph1"),
-                  plotOutput("graph2"))
+      column(12, align = "center",
+             plotOutput("graph1", width = "95%")
+      )
     ),
-    
-    checkboxGroupInput("Indicators", "",
-                       c("Beds",
-                         "Quarantined",
-                         "Contageous", 
-                         "Dead"),
-                       selected = c("Beds",
-                                    "Quarantined",
-                                    "Contageous", 
-                                    "Dead"),
-                       inline=TRUE)
+    fluidRow(
+      column(12, align = "center",
+             checkboxGroupInput("Indicators", "",
+                                c("Beds",
+                                  "Contageous", 
+                                  "Dead"),
+                                selected = c("Beds",
+                                             "Contageous", 
+                                             "Dead"),
+                                inline=TRUE)
+      )
+    )
 
   )
 ))

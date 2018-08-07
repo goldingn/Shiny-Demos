@@ -8,28 +8,28 @@ shinyServer(function(input, output) {
   mydata <- reactive({
     # Model Parameters:
     
-    IC <- input$IC  # Infected
-    N  <- input$N   # Total Population
-    np <- input$np  # Time periods
+    IC <- 10 ^ 3   # Infected
+    N  <- 10 ^ 7   # Total Population
+    np <- 300  # Time periods
     
   # Infection Parameters:
     # Mortality rate Days
-    Mr <- input$M  
+    Mr <- 0.6
     
     # Days till resolution
-    Days <- input$Days
+    Days <- 18
   
     # Resolution rate per day
     Dr <- 1/Days 
     
     # Transmition rate per day (for those contageous)
-    P <- input$P
+    P <- 0.081
         
     # Social adaption to disease rt=r0d/(1+S)^t
     
-    M   <- input$M
-    DET <- input$DET
-    K  <- input$K
+    M   <- 0.6
+    DET <- 0.07
+    K  <- 0.0003
                     
     # Gain in bumber of beds available
     bedsv <- input$bed0
@@ -92,16 +92,27 @@ shinyServer(function(input, output) {
     
     # Turn the results into a table
     long <- data.frame(
-      Period=rep((0:np),6), 
-      Population = c(S, C, Q, R, D, B), 
-      Indicator=rep(c("Susceptible", 
+      Period=rep((0:np),4), 
+      Population = c(B, Q, C, D), 
+      Indicator=rep(c("Beds",
+                      "Quarantined",
                       "Contageous", 
-                      "Quarentined",
-                      "Recovered",
-                      "Deceased",
-                      "Beds"), 
+                      "Dead"), 
                     each=np+1))
-    wide <- cbind(S, C, Q, R, D, B, r0)
+    wide <- cbind(B, r0, Q, C, D)
+    
+    # make some things integers
+    wide <- as.data.frame(wide)
+    wide$Q <- as.integer(wide$Q)
+    wide$B <- as.integer(wide$B)
+    
+    # better names
+    colnames(wide) <- c("Beds",
+                        "R0",
+                        "Quarantined",
+                        "Contageous",
+                        "Dead")
+    
     
     list(long=long, wide=wide)
     
@@ -116,7 +127,7 @@ shinyServer(function(input, output) {
     renderTable({
       Tdata <- mydata()[["wide"]]
       Tdata <- cbind(day=1:nrow(Tdata), Tdata)
-      Tdata[seq(1, nrow(Tdata), length.out=30),]
+      Tdata[seq(1, nrow(Tdata), length.out = 11),]
     })
     
   output$graph1 <- renderPlot({
@@ -134,19 +145,17 @@ shinyServer(function(input, output) {
   output$graph2 <- renderPlot({
     
     data2 <- mydata()[["wide"]]
-        
+    data2 <- as.matrix(data2)
     change <- data2[-1,]-data2[-nrow(data2),]
     
     long <- data.frame(
-      Period=rep((1:nrow(change)),7), 
+      Period=rep((1:nrow(change)), 5), 
       Population = c(change), 
-      Indicator=rep(c("Susceptible", 
+      Indicator=rep(c("Beds",
+                      "R0",
+                      "Quarantined",
                       "Contageous", 
-                      "Quarentined",
-                      "Recovered",
-                      "Deceased",
-                      "Beds",
-                      "r0"), 
+                      "Dead"),
                     each=nrow(change)))
     
     p <- ggplot(long[long$Indicator %in% input$Indicators,], 

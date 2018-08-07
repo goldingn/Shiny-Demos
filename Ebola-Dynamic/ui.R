@@ -10,34 +10,7 @@ shinyUI(pageWithSidebar(
   sidebarPanel(
     
     tags$h3("Data Generation"),
-            
-    sliderInput("N", "Population:", 
-                min=10^4, max=10^7, value=10^6, step=10^4),
-    
-    sliderInput("IC", "Initial Infected Detected:", 
-                min=0, max=10^3, value=100, step=1),
-     
-    sliderInput("np", "Number of days:", 
-                min=30, max=360, value=270, step=10),
       
-    textOutput("r0"), 
-
-    sliderInput("P", "Transmition rate:", 
-                min=.01, max=.25, value=.081, step=.001),
-    
-    sliderInput("Days", "Contageous Period (Days):", 
-                min=0, max=40, value=18, step=1), 
-
-    sliderInput("M", "Moralitity Rate:", 
-                min=0, max=1, value=.6, step=.05), 
-
-    sliderInput("K", "Social 'adaption' to reduce infection:", 
-                min=-.0012, max=.0012, value=.0003, step=.0003), 
-    
-    sliderInput("DET", "Daily Detection Rate:", 
-                min=0, max=1, value=.07, step=.01), 
-    textOutput("LDET"), 
-    
     sliderInput("bed0", "# of Quarantine Beds Available Initially:", 
                 min=0, max=10^3, value=0, step=10), 
 
@@ -70,34 +43,43 @@ shinyUI(pageWithSidebar(
     
     br(),
 
-    h5("Created by:"),
+    h5("Initial version created by:"),
     tags$a("Econometrics by Simulation", 
            href="http://www.econometricsbysimulation.com"),
     h5("For details on how data is generated"),
     tags$a("Blog Post", 
-           href=""),
+           href="http://www.econometricsbysimulation.com/2014/10/ebola-beds-labs-and-warnings-can-they.html"),
+    h5("Adapted by:"),
+    tags$a("Nick Golding", 
+           href="https://github.com/goldingn/Shiny-Demos/tree/master/Ebola-Dynamic"),
+    
     h5(textOutput("counter"))
     
     ),
   
   # Show a table summarizing the values entered
   mainPanel(
+    
+    # h5(textOutput("counter")),
+    
+    tableOutput("datatable"),
+
+    fluidRow(
+      splitLayout(cellWidths = c("50%", "50%"),
+                  plotOutput("graph1"),
+                  plotOutput("graph2"))
+    ),
+    
     checkboxGroupInput("Indicators", "",
-                       c("Susceptible", 
+                       c("Beds",
+                         "Quarantined",
                          "Contageous", 
-                         "Recovered",
-                         "Deceased",
-                         "Quarentined",
-                         "Beds"),
-                       selected=c(
-                         "Contageous", 
-                         "Quarentined",
-                         "Recovered",
-                         "Deceased",
-                         "Beds"),
-                       inline=TRUE),
-    plotOutput("graph1"),
-    plotOutput("graph2"),
-    tableOutput("datatable")
+                         "Dead"),
+                       selected = c("Beds",
+                                    "Quarantined",
+                                    "Contageous", 
+                                    "Dead"),
+                       inline=TRUE)
+
   )
 ))
